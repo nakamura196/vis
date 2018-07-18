@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Material Design Bootstrap</title>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css" rel="stylesheet">
+    <!-- Bootstrap core CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Material Design Bootstrap -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.5.4/css/mdb.min.css" rel="stylesheet">
+
+
+    <style type="text/css">
+        #mynetwork {
+            width: 100%;
+            height: 600px;
+            border: 1px solid lightgray;
+            /*background: lightgray;*/
+        }
+    </style>
+</head>
+
+<body>
+
+<!--Main Navigation-->
+<header>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light white scrolling-navbar">
+        <div class="container-fluid">
+
+            <!-- Brand -->
+            <a class="navbar-brand" href="./">
+                <strong>Les réseaux entre les éléments de l'<i>Encyclopédie</i></strong>
+            </a>
+
+
+        </div>
+    </nav>
+    <!-- Navbar -->
+
+</header>
+<!--Main Navigation-->
+
+<!--Main layout-->
+<main class="mt-5">
+    <div class="container-fluid">
+
+        <div class="row">
+            <div class="col-md-3">
+                <!-- Card -->
+                <div class="card">
+                    <!-- Card content -->
+                    <div class="card-body">
+
+                        <table id="example" class="display" style="width:100%">
+                            <thead>
+                            <tr>
+                                <th>Cited by</th>
+                                <th>Article</th>
+                                <th>References</th>
+                            </tr>
+                            </thead>
+                            <tbody id="tbody">
+                            </tbody>
+                        </table>
+
+
+                    </div>
+
+                </div>
+
+                <br/>
+            </div>
+            <div class="col-md-9">
+                <!-- Card -->
+                <div class="card">
+                    <!-- Card content -->
+                    <div class="card-body">
+                        <div id="mynetwork" style="border-style : solid;"></div>
+                    </div>
+
+                </div>
+                <!-- Card -->
+            </div>
+        </div>
+
+    </div>
+</main>
+<!--Main layout-->
+
+<!-- Footer -->
+<footer class="page-footer font-small special-color-dark mt-5">
+
+    <!-- Copyright -->
+    <div class="footer-copyright text-center py-5">&copy; 2018 Tokyo Digital History. &amp; Société d’étude sur l’<i>Encyclopédie</i> et les Lumières.</div>
+    <!-- Copyright -->
+
+</footer>
+<!-- Footer -->
+
+
+<script type="text/javascript" language="javascript" src="https://code.jquery.com/jquery-3.3.1.js"></script>
+<script src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
+
+
+<script type="text/javascript">
+
+    var nodes, edges, network;
+
+    //origin to destination
+    var od_map = {};
+
+    //reverse of od_map
+    var do_map = {};
+
+    //ネットワークの表示セレクタを正方形にする
+    setContainerSize();
+
+
+    getCSV(); //最初に実行される
+
+    //ネットワークの表示セレクタを正方形にする
+    function setContainerSize(){
+
+        var window_height = $(window).height() * 0.98;
+        var container_width = $("#mynetwork").width();
+
+        if(container_width > window_height){
+            container_width = window_height;
+        }
+
+        $("#mynetwork").height(container_width);
+        $("#mynetwork").width(container_width);
+
+    }
+
+
+    //CSVファイルを読み込む関数getCSV()の定義
+    function getCSV() {
+        var req = new XMLHttpRequest(); // HTTPでファイルを読み込むためのXMLHttpRrequestオブジェクトを生成
+        req.open("get", "data_all.tsv", true); // アクセスするファイルを指定
+        req.send(null); // HTTPリクエストの発行
+
+        // レスポンスが返ってきたらconvertCSVtoArray()を呼ぶ
+        req.onload = function () {
+            convertCSVtoArray(req.responseText); // 渡されるのは読み込んだCSVデータ
+        }
+    }
+
+    // 読み込んだCSVデータを二次元配列に変換する関数convertCSVtoArray()の定義
+    function convertCSVtoArray(str) { // 読み込んだCSVデータが文字列として渡される
+
+        var tmp = str.split("\n"); // 改行を区切り文字として行を要素とした配列を生成
+
+        // 各行ごとにカンマで区切った文字列を要素とした二次元配列を生成
+        for (var i = 0; i < tmp.length; ++i) {
+            //result[i] = tmp[i].split('\t');
+
+            var line = tmp[i];
+
+            var str = line.split('\t');
+
+            if (str.length == 1) {
+                continue;
+            }
+
+            var org = str[0].trim();
+            var dest = str[1].trim();
+
+
+            if (!od_map[org]) {
+                od_map[org] = {};
+            }
+
+            var dest_map = od_map[org];
+            if (!dest_map[dest]) {
+                dest_map[dest] = 0;
+            }
+            dest_map[dest] += 1;
+
+            if (!do_map[dest]) {
+                do_map[dest] = {};
+            }
+
+            var org_map = do_map[dest];
+            if (!org_map[org]) {
+                org_map[org] = 0;
+            }
+            org_map[org] += 1;
+
+        }
+
+        draw()
+    }
+
+
+    function draw() {
+
+        //list all nodes
+        var all_nodes = [];
+
+        for (var org in od_map) {
+
+            if (all_nodes.indexOf(org) == -1) {
+                all_nodes.push(org);
+            }
+
+            for (var dest in od_map[org]) {
+                if (all_nodes.indexOf(dest) == -1) {
+                    all_nodes.push(dest);
+                }
+            }
+        }
+
+
+        for (var i = 0; i < all_nodes.length; i++) {
+
+            var node = all_nodes[i];
+
+            var tr = $("<tr>");
+            tr.attr("onClick", "addNewNode('" + node + "')");
+            $("#tbody").append(tr);
+
+            var td = $("<td>");
+            tr.append(td);
+            //流入量
+            var o_freq = 0;
+            if (do_map[node]) {
+                o_freq = Object.keys(do_map[node]).length;
+            }
+            td.append(o_freq);
+
+            td = $("<td>");
+            tr.append(td);
+            td.append(node);
+
+            td = $("<td>");
+            tr.append(td);
+            //流出量
+            var d_freq = 0;
+            if (od_map[node]) {
+                d_freq = Object.keys(od_map[node]).length;
+            }
+            td.append(d_freq);
+
+        }
+
+        $(document).ready(function () {
+            $('#example').DataTable(
+                {"order": [[1, "asc"]]}
+            );
+        });
+
+
+        nodes = new vis.DataSet([]);
+        edges = new vis.DataSet([]);
+
+
+        // create a network
+        var container = document.getElementById('mynetwork');
+        var data = {
+            nodes: nodes,
+            edges: edges
+        };
+        var options = {
+            nodes: {
+                shape: 'dot',
+                scaling: {
+                    label: {
+                        min: 8,
+                        max: 20
+                    }
+                }
+            }
+        };
+        network = new vis.Network(container, data, options);
+
+        network.on("click", function (params) {
+            params.event = "[original event]";
+            //document.getElementById('eventSpan').innerHTML = '<h2>Click event:</h2>' + JSON.stringify(params, null, 4);
+            node = this.getNodeAt(params.pointer.DOM);
+            if (node != null) {
+                addNewNode(node)
+            }
+        });
+
+    }
+
+    function addNewNode(node) {
+
+        //target node
+        addNode(node, getNumOfCitations(node));
+
+        //destination nodes
+        var dest_map = od_map[node];
+        for (var dest in dest_map) {
+            console.log(Object.keys(do_map[dest]).length);
+            addNode(dest, getNumOfCitations(dest));
+            addEdge(node, dest, dest_map[dest]);
+        }
+
+        //origin nodes
+        var org_map = do_map[node];
+        for (var org in org_map) {
+            addNode(org, getNumOfCitations(org));
+            addEdge(org, node, od_map[org][node]);
+        }
+
+    }
+
+    //被引用数を取得するメソッド
+    function getNumOfCitations(node) {
+        var map = do_map[node];
+        if (map == null) {
+            return 0;
+        }
+        var keys = Object.keys(map);
+        return keys.length;
+    }
+
+    //ノードを追加するメソッド
+    function addNode(node_id, value) {
+        try {
+            nodes.add({
+                id: node_id,
+                label: node_id,
+                value: value
+            });
+        }
+        catch (err) {
+            console.log(err);
+        }
+    }
+
+    //エッジを追加するメソッド
+    function addEdge(from, to, value) {
+        try {
+            edges.add({
+                id: from + "_" + to,
+                from: from,
+                to: to,
+                arrows: "to",
+                value: value
+            });
+        }
+        catch (err) {
+            console.log(err);
+        }
+    }
+
+</script>
+</body>
+
+</html>
