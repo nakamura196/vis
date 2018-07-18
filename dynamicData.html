@@ -19,6 +19,8 @@
         #mynetwork {
             width: 100%;
             height: 600px;
+            border: 1px solid lightgray;
+            /*background: lightgray;*/
         }
     </style>
 </head>
@@ -80,7 +82,7 @@
                 <div class="card">
                     <!-- Card content -->
                     <div class="card-body">
-                        <div id="mynetwork"></div>
+                        <div id="mynetwork" style="border-style : solid;"></div>
                     </div>
 
                 </div>
@@ -120,12 +122,13 @@
     //ネットワークの表示セレクタを正方形にする
     setContainerSize();
 
+
     getCSV(); //最初に実行される
 
     //ネットワークの表示セレクタを正方形にする
     function setContainerSize(){
 
-        var window_height = $(window).height() * 0.9;
+        var window_height = $(window).height() * 0.98;
         var container_width = $("#mynetwork").width();
 
         if(container_width > window_height){
@@ -134,6 +137,7 @@
 
         $("#mynetwork").height(container_width);
         $("#mynetwork").width(container_width);
+
     }
 
 
