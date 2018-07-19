@@ -20,12 +20,9 @@
             width: 100%;
             height: 600px;
             border: 1px solid lightgray;
-            /*background: lightgray;*/
         }
     </style>
 </head>
-
-<body>
 
 <!--Main Navigation-->
 <header>
@@ -49,7 +46,7 @@
 
 
 <!--Main layout-->
-<main class="mt-5">
+<main class="py-5" style="background-color: #eee;">
     <div class="container-fluid">
 
         <div class="row">
@@ -94,7 +91,7 @@
 
 
 <!-- Footer -->
-<footer class="page-footer font-small special-color-dark mt-5">
+<footer class="page-footer font-small special-color-dark">
 
     <!-- Copyright -->
     <div class="footer-copyright text-center py-5">&copy; 2018 Tokyo Digital History. &amp; Société d’étude sur l’<i>Encyclopédie</i>
@@ -120,8 +117,9 @@
     //reverse of od_map
     var do_map = {};
 
-    //表示済みのノードを格納する
+    //表示済みのノードとエッジを格納する
     var exist_nodes = [];
+    var exist_edges = [];
 
     //ネットワークの表示セレクタを正方形にする
     setContainerSize();
@@ -201,13 +199,15 @@
 
         }
 
+        //テーブルの表示
+        displayTable();
+
         //ネットワークの表示
-        draw()
+        displayNetwork();
     }
 
-    //ネットワークの表示
-    function draw() {
-
+    //テーブルの表示
+    function displayTable() {
         //list all nodes
         var all_nodes = [];
 
@@ -256,19 +256,23 @@
             "order": [[1, "asc"]]
         });
 
-        $('#example tbody').on( 'click', 'tr', function () {
-            if ( $(this).hasClass('selected') ) {
+        $('#example tbody').on('click', 'tr', function () {
+            if ($(this).hasClass('selected')) {
                 $(this).removeClass('selected');
             }
             else {
                 table.$('tr.selected').removeClass('selected');
                 $(this).addClass('selected');
-                addNewNode(table.row('.selected').data()[1]);
+                addNewNodes(table.row('.selected').data()[1]);
             }
-        } );
+        });
 
         //Loadingアイコンの除去
         $("#loading").remove();
+    }
+
+    //ネットワークの表示
+    function displayNetwork() {
 
 
         nodes = new vis.DataSet([]);
@@ -299,41 +303,74 @@
             //document.getElementById('eventSpan').innerHTML = '<h2>Click event:</h2>' + JSON.stringify(params, null, 4);
             node = this.getNodeAt(params.pointer.DOM);
             if (node != null) {
-                addNewNode(node)
+                addNewNodes(node)
             }
         });
 
     }
 
-    function addNewNode(node) {
+    //ノードとエッジの追加前の確認メソッド
+    function addNewNodes(node) {
+
+        //引用数
+        var numOfReferences = getNumOfReferences(node);
+        //被引用数
+        var numOfCitedBy = getNumOfCitedBy(node);
+        //追加されるTotalノード数
+        var total = numOfReferences + numOfCitedBy;
+
+        if (total > 100) {
+
+            var message = "Article \"" + node + "\" is connected to " + total + ' articles. It takes time to display them. Are you sure?';
+
+            // 「OK」時の処理開始 ＋ 確認ダイアログの表示
+            if (window.confirm(message)) {
+                displayNewNodes(node);
+            }
+            // 「OK」時の処理終了
+
+            // 「キャンセル」時の処理開始
+            else {
+                window.alert('Canceled.'); // 警告ダイアログを表示
+            }
+            // 「キャンセル」時の処理終了
+        } else {
+            displayNewNodes(node);
+        }
+    }
+
+    //追加ノードとエッジを表示するメソッド
+    function displayNewNodes(node) {
 
         //target node
-        if (exist_nodes.indexOf(node) == -1) {
-            addNode(node, getNumOfCitedBy(node));
-            exist_nodes.push(node);
-        }
+
+        addNode(node, getNumOfCitedBy(node));
+
 
         //destination nodes
         var dest_map = od_map[node];
         for (var dest in dest_map) {
-            if (exist_nodes.indexOf(dest) == -1) {
-                addNode(dest, getNumOfCitedBy(dest));
-                addEdge(node, dest, dest_map[dest]);
-                exist_nodes.push(dest);
-            }
-
+            addNode(dest, getNumOfCitedBy(dest));
+            addEdge(node, dest, dest_map[dest]);
         }
 
         //origin nodes
         var org_map = do_map[node];
         for (var org in org_map) {
-            if (exist_nodes.indexOf(org) == -1) {
-                addNode(org, getNumOfCitedBy(org));
-                addEdge(org, node, od_map[org][node]);
-                exist_nodes.push(org);
-            }
+            addNode(org, getNumOfCitedBy(org));
+            addEdge(org, node, od_map[org][node]);
         }
+    }
 
+
+    //引用数を取得するメソッド
+    function getNumOfReferences(node) {
+        var map = od_map[node];
+        if (map == null) {
+            return 0;
+        }
+        var keys = Object.keys(map);
+        return keys.length;
     }
 
     //被引用数を取得するメソッド
@@ -348,32 +385,45 @@
 
     //ノードを追加するメソッド
     function addNode(node_id, value) {
-        try {
+
+        if (exist_nodes.indexOf(node_id) == -1) {
+
+            var color = 'rgba(97,195,238,0.5)';
+            if (value > 100) {
+                color = "rgb(255,168,7)";
+            }
+
             nodes.add({
                 id: node_id,
                 label: node_id,
-                value: value
+                value: value,
+                color: color
             });
-        }
-        catch (err) {
-            console.log(err);
+
+            exist_nodes.push(node_id);
         }
     }
 
     //エッジを追加するメソッド
     function addEdge(from, to, value) {
-        try {
+
+        //エッジが存在するかをチェックするための仮文字列
+        var check_str = from + " -> " + to;
+
+        if (exist_edges.indexOf(check_str) == -1) {
             edges.add({
                 id: from + "_" + to,
                 from: from,
                 to: to,
                 arrows: "to",
-                value: value
+                value: value,
+                color: 'rgba(97,195,238,0.5)'
             });
+
+            exist_edges.push(check_str);
         }
-        catch (err) {
-            console.log(err);
-        }
+
+
     }
 
 </script>
