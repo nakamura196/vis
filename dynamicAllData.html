@@ -47,35 +47,33 @@
 </header>
 <!--Main Navigation-->
 
+
 <!--Main layout-->
 <main class="mt-5">
     <div class="container-fluid">
 
         <div class="row">
-            <div class="col-md-3">
+            <div class="col-md-3 mb-4">
+
                 <!-- Card -->
                 <div class="card">
                     <!-- Card content -->
                     <div class="card-body">
 
+                        <div id="loading" class="text-center my-5">
+                            <img class="img-fluid"
+                                 src="https://upload.wikimedia.org/wikipedia/commons/b/b1/Loading_icon.gif"
+                                 alt="Now Loading..."/>
+                            <p>Loading...</p>
+                        </div>
+
                         <table id="example" class="display" style="width:100%">
-                            <thead>
-                            <tr>
-                                <th>Cited by</th>
-                                <th>Article</th>
-                                <th>References</th>
-                            </tr>
-                            </thead>
-                            <tbody id="tbody">
-                            </tbody>
                         </table>
 
 
                     </div>
 
                 </div>
-
-                <br/>
             </div>
             <div class="col-md-9">
                 <!-- Card -->
@@ -94,11 +92,14 @@
 </main>
 <!--Main layout-->
 
+
 <!-- Footer -->
 <footer class="page-footer font-small special-color-dark mt-5">
 
     <!-- Copyright -->
-    <div class="footer-copyright text-center py-5">&copy; 2018 Tokyo Digital History. &amp; Société d’étude sur l’<i>Encyclopédie</i> et les Lumières.</div>
+    <div class="footer-copyright text-center py-5">&copy; 2018 Tokyo Digital History. &amp; Société d’étude sur l’<i>Encyclopédie</i>
+        et les Lumières.
+    </div>
     <!-- Copyright -->
 
 </footer>
@@ -119,6 +120,9 @@
     //reverse of od_map
     var do_map = {};
 
+    //表示済みのノードを格納する
+    var exist_nodes = [];
+
     //ネットワークの表示セレクタを正方形にする
     setContainerSize();
 
@@ -126,12 +130,12 @@
     getCSV(); //最初に実行される
 
     //ネットワークの表示セレクタを正方形にする
-    function setContainerSize(){
+    function setContainerSize() {
 
         var window_height = $(window).height() * 0.98;
         var container_width = $("#mynetwork").width();
 
-        if(container_width > window_height){
+        if (container_width > window_height) {
             container_width = window_height;
         }
 
@@ -157,6 +161,7 @@
     function convertCSVtoArray(str) { // 読み込んだCSVデータが文字列として渡される
 
         var tmp = str.split("\n"); // 改行を区切り文字として行を要素とした配列を生成
+
 
         // 各行ごとにカンマで区切った文字列を要素とした二次元配列を生成
         for (var i = 0; i < tmp.length; ++i) {
@@ -196,10 +201,11 @@
 
         }
 
+        //ネットワークの表示
         draw()
     }
 
-
+    //ネットワークの表示
     function draw() {
 
         //list all nodes
@@ -218,44 +224,51 @@
             }
         }
 
+        //テーブル表示用の変数
+        var dataSet = [];
 
         for (var i = 0; i < all_nodes.length; i++) {
 
             var node = all_nodes[i];
 
-            var tr = $("<tr>");
-            tr.attr("onClick", "addNewNode('" + node + "')");
-            $("#tbody").append(tr);
-
-            var td = $("<td>");
-            tr.append(td);
             //流入量
             var o_freq = 0;
             if (do_map[node]) {
                 o_freq = Object.keys(do_map[node]).length;
             }
-            td.append(o_freq);
 
-            td = $("<td>");
-            tr.append(td);
-            td.append(node);
-
-            td = $("<td>");
-            tr.append(td);
-            //流出量
             var d_freq = 0;
             if (od_map[node]) {
                 d_freq = Object.keys(od_map[node]).length;
             }
-            td.append(d_freq);
+
+            dataSet.push([o_freq, node, d_freq]);
 
         }
 
-        $(document).ready(function () {
-            $('#example').DataTable(
-                {"order": [[1, "asc"]]}
-            );
+        var table = $('#example').DataTable({
+            data: dataSet,
+            columns: [
+                {title: "Cited By"},
+                {title: "Article"},
+                {title: "References"}
+            ],
+            "order": [[1, "asc"]]
         });
+
+        $('#example tbody').on( 'click', 'tr', function () {
+            if ( $(this).hasClass('selected') ) {
+                $(this).removeClass('selected');
+            }
+            else {
+                table.$('tr.selected').removeClass('selected');
+                $(this).addClass('selected');
+                addNewNode(table.row('.selected').data()[1]);
+            }
+        } );
+
+        //Loadingアイコンの除去
+        $("#loading").remove();
 
 
         nodes = new vis.DataSet([]);
@@ -295,27 +308,36 @@
     function addNewNode(node) {
 
         //target node
-        addNode(node, getNumOfCitations(node));
+        if (exist_nodes.indexOf(node) == -1) {
+            addNode(node, getNumOfCitedBy(node));
+            exist_nodes.push(node);
+        }
 
         //destination nodes
         var dest_map = od_map[node];
         for (var dest in dest_map) {
-            console.log(Object.keys(do_map[dest]).length);
-            addNode(dest, getNumOfCitations(dest));
-            addEdge(node, dest, dest_map[dest]);
+            if (exist_nodes.indexOf(dest) == -1) {
+                addNode(dest, getNumOfCitedBy(dest));
+                addEdge(node, dest, dest_map[dest]);
+                exist_nodes.push(dest);
+            }
+
         }
 
         //origin nodes
         var org_map = do_map[node];
         for (var org in org_map) {
-            addNode(org, getNumOfCitations(org));
-            addEdge(org, node, od_map[org][node]);
+            if (exist_nodes.indexOf(org) == -1) {
+                addNode(org, getNumOfCitedBy(org));
+                addEdge(org, node, od_map[org][node]);
+                exist_nodes.push(org);
+            }
         }
 
     }
 
     //被引用数を取得するメソッド
-    function getNumOfCitations(node) {
+    function getNumOfCitedBy(node) {
         var map = do_map[node];
         if (map == null) {
             return 0;
