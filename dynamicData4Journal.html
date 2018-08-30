@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <title>Les réseaux entre les éléments de l'Encyclopédie</title>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css"/>
+  <link href="https://cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css" rel="stylesheet">
+  <!-- Bootstrap core CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Material Design Bootstrap -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.5.4/css/mdb.min.css" rel="stylesheet">
+
+
+  <style type="text/css">
+  #mynetwork {
+    width: 100%;
+    height: 600px;
+    border: 1px solid lightgray;
+  }
+  </style>
+</head>
+
+<!--Main Navigation-->
+<header>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-light white scrolling-navbar">
+
+    <!-- Brand -->
+    <a class="navbar-brand" href="./">
+      Les réseaux entre les éléments de l'<i>Encyclopédie</i>
+    </a>
+
+    <div class="container-fluid">
+
+
+
+
+    </div>
+  </nav>
+  <!-- Navbar -->
+
+</header>
+<!--Main Navigation-->
+
+
+<!--Main layout-->
+<main class="py-5" style="background-color: #eee;">
+  <div class="container-fluid">
+
+    <div class="row">
+      <div class="col-md-3 mb-4">
+
+        <!-- Card -->
+        <div class="card">
+          <!-- Card content -->
+          <div class="card-body">
+
+            <div id="loading" class="text-center my-5">
+              <img class="img-fluid"
+              src="https://upload.wikimedia.org/wikipedia/commons/b/b1/Loading_icon.gif"
+              alt="Now Loading..."/>
+              <p>Loading...</p>
+            </div>
+
+            <table id="example" class="display" style="width:100%">
+            </table>
+
+
+          </div>
+
+        </div>
+      </div>
+      <div class="col-md-6">
+        <!-- Card -->
+        <div class="card">
+          <!-- Card content -->
+          <div class="card-body">
+            <div id="mynetwork" style="border-style : solid;"></div>
+          </div>
+
+        </div>
+        <!-- Card -->
+      </div>
+
+      <div class="col-md-3">
+        <!-- Card -->
+        <div class="card">
+          <!-- Card content -->
+          <div class="card-body">
+            <dl>
+              <dt>Entry name : </dt>
+              <dd>NEWTONIANISME</dd>
+              <dt>Désignant : </dt>
+              <dd>Physique</dd>
+              <dt>Contributor : </dt>
+              <dd></dd>
+              <dt>Authors & Works mentioned : </dt>
+              <dd>Gravesande, Willem Jacob's, 1688-1742<br/>
+                Newton, Isaac, 1642-1727, Philosophiæ naturalis principia mathematica (1726)<br/>
+                Pemberton, Henry, 1694-1771, View of the Newtonian Philosophy (1728)<br/>
+                Maclaurin, Colin, 1698-1746, Exposition des découvertes philosophiques de M. le chevalier Newton (1749)<br/>
+                Kepler, Johannes, 1571-1630, Astronomia nova (1609)<br/>
+                <a href="#">See more</a></dd>
+                <dt>Volume : </dt>
+                <dd>XI</dd>
+                <dt>Renvois : </dt>
+                <dd>PHILOSOPHIE<br/>
+                  CORPUSCULAIRE<br/>
+                  ARISTOTÉLISME<br/>
+                  PÉRIPATÉTISME<br/>
+                  CARTÉSIANISME<br/>
+                  <a href="#">See more</a></dd>
+              </dl>
+
+            </div>
+
+          </div>
+          <!-- Card -->
+        </div>
+      </div>
+
+    </div>
+  </main>
+  <!--Main layout-->
+
+
+  <!-- Footer -->
+  <footer class="page-footer font-small special-color-dark">
+
+    <!-- Copyright -->
+    <div class="footer-copyright text-center py-5">&copy; 2018 Tokyo Digital History. / Société d’étude sur l’<i>Encyclopédie</i>
+      et les Lumières.
+    </div>
+    <!-- Copyright -->
+
+  </footer>
+  <!-- Footer -->
+
+
+  <script type="text/javascript" language="javascript" src="https://code.jquery.com/jquery-3.3.1.js"></script>
+  <script src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
+
+
+  <script type="text/javascript">
+
+  var nodes, edges, network;
+
+  //origin to destination
+  var od_map = {};
+
+  //reverse of od_map
+  var do_map = {};
+
+  //表示済みのノードとエッジを格納する
+  var exist_nodes = [];
+  var exist_edges = [];
+
+  //ネットワークの表示セレクタを正方形にする
+  setContainerSize();
+
+
+  getCSV(); //最初に実行される
+
+  //ネットワークの表示セレクタを正方形にする
+  function setContainerSize() {
+
+    var window_height = $(window).height() * 0.98;
+    var container_width = $("#mynetwork").width();
+
+    if (container_width > window_height) {
+      container_width = window_height;
+    }
+
+    $("#mynetwork").height(container_width);
+    $("#mynetwork").width(container_width);
+
+  }
+
+
+  //CSVファイルを読み込む関数getCSV()の定義
+  function getCSV() {
+    var req = new XMLHttpRequest(); // HTTPでファイルを読み込むためのXMLHttpRrequestオブジェクトを生成
+    req.open("get", "data_all.tsv", true); // アクセスするファイルを指定
+    req.send(null); // HTTPリクエストの発行
+
+    // レスポンスが返ってきたらconvertCSVtoArray()を呼ぶ
+    req.onload = function () {
+      convertCSVtoArray(req.responseText); // 渡されるのは読み込んだCSVデータ
+    }
+  }
+
+  // 読み込んだCSVデータを二次元配列に変換する関数convertCSVtoArray()の定義
+  function convertCSVtoArray(str) { // 読み込んだCSVデータが文字列として渡される
+
+    var tmp = str.split("\n"); // 改行を区切り文字として行を要素とした配列を生成
+
+
+    // 各行ごとにカンマで区切った文字列を要素とした二次元配列を生成
+    for (var i = 0; i < tmp.length; ++i) {
+      //result[i] = tmp[i].split('\t');
+
+      var line = tmp[i];
+
+      var str = line.split('\t');
+
+      if (str.length == 1) {
+        continue;
+      }
+
+      var org = str[0].trim();
+      var dest = str[1].trim();
+
+
+      if (!od_map[org]) {
+        od_map[org] = {};
+      }
+
+      var dest_map = od_map[org];
+      if (!dest_map[dest]) {
+        dest_map[dest] = 0;
+      }
+      dest_map[dest] += 1;
+
+      if (!do_map[dest]) {
+        do_map[dest] = {};
+      }
+
+      var org_map = do_map[dest];
+      if (!org_map[org]) {
+        org_map[org] = 0;
+      }
+      org_map[org] += 1;
+
+    }
+
+    //テーブルの表示
+    displayTable();
+
+    //ネットワークの表示
+    displayNetwork();
+  }
+
+  //テーブルの表示
+  function displayTable() {
+    //list all nodes
+    var all_nodes = [];
+
+    for (var org in od_map) {
+
+      if (all_nodes.indexOf(org) == -1) {
+        all_nodes.push(org);
+      }
+
+      for (var dest in od_map[org]) {
+        if (all_nodes.indexOf(dest) == -1) {
+          all_nodes.push(dest);
+        }
+      }
+    }
+
+    //テーブル表示用の変数
+    var dataSet = [];
+
+    for (var i = 0; i < all_nodes.length; i++) {
+
+      var node = all_nodes[i];
+
+      //流入量
+      var o_freq = 0;
+      if (do_map[node]) {
+        o_freq = Object.keys(do_map[node]).length;
+      }
+
+      var d_freq = 0;
+      if (od_map[node]) {
+        d_freq = Object.keys(od_map[node]).length;
+      }
+
+      dataSet.push([o_freq, node, d_freq]);
+
+    }
+
+    var table = $('#example').DataTable({
+      data: dataSet,
+      columns: [
+        {title: "Cited By"},
+        {title: "Article"},
+        {title: "References"}
+      ],
+      "order": [[1, "asc"]]
+    });
+
+    $('#example tbody').on('click', 'tr', function () {
+      if ($(this).hasClass('selected')) {
+        $(this).removeClass('selected');
+      }
+      else {
+        table.$('tr.selected').removeClass('selected');
+        $(this).addClass('selected');
+        addNewNodes(table.row('.selected').data()[1]);
+      }
+    });
+
+    //Loadingアイコンの除去
+    $("#loading").remove();
+  }
+
+  //ネットワークの表示
+  function displayNetwork() {
+
+
+    nodes = new vis.DataSet([]);
+    edges = new vis.DataSet([]);
+
+
+    // create a network
+    var container = document.getElementById('mynetwork');
+    var data = {
+      nodes: nodes,
+      edges: edges
+    };
+    var options = {
+      nodes: {
+        shape: 'dot',
+        scaling: {
+          label: {
+            min: 8,
+            max: 20
+          }
+        }
+      }
+    };
+    network = new vis.Network(container, data, options);
+
+    network.on("click", function (params) {
+      params.event = "[original event]";
+      //document.getElementById('eventSpan').innerHTML = '<h2>Click event:</h2>' + JSON.stringify(params, null, 4);
+      node = this.getNodeAt(params.pointer.DOM);
+      if (node != null) {
+        addNewNodes(node)
+      }
+    });
+
+  }
+
+  //ノードとエッジの追加前の確認メソッド
+  function addNewNodes(node) {
+
+    //引用数
+    var numOfReferences = getNumOfReferences(node);
+    //被引用数
+    var numOfCitedBy = getNumOfCitedBy(node);
+    //追加されるTotalノード数
+    var total = numOfReferences + numOfCitedBy;
+
+    if (total > 100) {
+
+      var message = "Article \"" + node + "\" is connected to " + total + ' articles. It takes time to display them. Are you sure?';
+
+      // 「OK」時の処理開始 ＋ 確認ダイアログの表示
+      if (window.confirm(message)) {
+        displayNewNodes(node);
+      }
+      // 「OK」時の処理終了
+
+      // 「キャンセル」時の処理開始
+      else {
+        window.alert('Canceled.'); // 警告ダイアログを表示
+      }
+      // 「キャンセル」時の処理終了
+    } else {
+      displayNewNodes(node);
+    }
+  }
+
+  //追加ノードとエッジを表示するメソッド
+  function displayNewNodes(node) {
+
+    //target node
+
+    addNode(node, getNumOfCitedBy(node));
+
+
+    //destination nodes
+    var dest_map = od_map[node];
+    for (var dest in dest_map) {
+      addNode(dest, getNumOfCitedBy(dest));
+      addEdge(node, dest, dest_map[dest]);
+    }
+
+    //origin nodes
+    var org_map = do_map[node];
+    for (var org in org_map) {
+      addNode(org, getNumOfCitedBy(org));
+      addEdge(org, node, od_map[org][node]);
+    }
+  }
+
+
+  //引用数を取得するメソッド
+  function getNumOfReferences(node) {
+    var map = od_map[node];
+    if (map == null) {
+      return 0;
+    }
+    var keys = Object.keys(map);
+    return keys.length;
+  }
+
+  //被引用数を取得するメソッド
+  function getNumOfCitedBy(node) {
+    var map = do_map[node];
+    if (map == null) {
+      return 0;
+    }
+    var keys = Object.keys(map);
+    return keys.length;
+  }
+
+  //ノードを追加するメソッド
+  function addNode(node_id, value) {
+
+    if (exist_nodes.indexOf(node_id) == -1) {
+
+      var color = 'rgba(97,195,238,0.5)';
+      if (value > 100) {
+        color = "rgb(255,168,7)";
+      }
+
+      nodes.add({
+        id: node_id,
+        label: node_id,
+        value: value,
+        color: color
+      });
+
+      exist_nodes.push(node_id);
+    }
+  }
+
+  //エッジを追加するメソッド
+  function addEdge(from, to, value) {
+
+    //エッジが存在するかをチェックするための仮文字列
+    var check_str = from + " -> " + to;
+
+    //双方向エッジ
+    if(od_map[from][to] != null && od_map[to] != null && od_map[to][from] != null){
+      color = {color:'blue'}
+    }　else {
+      color = 'rgba(97,195,238,0.5)'
+    }
+
+    if (exist_edges.indexOf(check_str) == -1) {
+      edges.add({
+        id: from + "_" + to,
+        from: from,
+        to: to,
+        arrows: "to",
+        value: value,
+        color: color//'rgba(97,195,238,0.5)'
+      });
+
+      exist_edges.push(check_str);
+    }
+
+
+  }
+
+</script>
+</body>
+
+</html>
